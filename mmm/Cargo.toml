@@ -1,0 +1,10 @@
+[workspace]
+
+members = [
+        "mmm-core",
+        "mmm-gym",
+        "mmm-coinbase",
+        "mmm-nasdaq",
+        "mmm-py",
+        "mmm-nyse", 
+]

@@ -1,0 +1,19 @@
+[package]
+name = "mmm-py"
+version = "0.2.1"
+authors = ["Kim SeongMin <seankimce@gmail.com>"]
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+numpy = "0.15.0"
+pyo3 = { version = "0.15.1", features = ["extension-module"] }
+mmm-nasdaq = { path = "../mmm-nasdaq" }
+mmm-nyse = { path = "../mmm-nyse"}
+mmm-core = { path = "../mmm-core"}
+mmm-us = { path = "../mmm-us"}
+
+[lib]
+name = "mmm"
+crate-type = ["cdylib"]
