@@ -59,6 +59,21 @@ def ffill_zeros(np_array):
     df.replace(to_replace=0, method='ffill', inplace=True)
     return np.squeeze(df.values)
 
+def ffill_zeros_ohlc(open_np, high_np, low_np, close_np):
+    open_np, high_np, low_np, close_np = np.expand_dims(open_np, 1), np.expand_dims(high_np, 1), np.expand_dims(low_np, 1), np.expand_dims(close_np, 1)
+    df = pd.DataFrame(np.concatenate([open_np, high_np, low_np, close_np], axis=1), columns=["open", "high", "low", "close"])
+    df['close'].replace(to_replace=0, method='ffill', inplace=True)
+    df['open'] = np.where(df['open'] == 0, df['close'], df['open'])
+    df['high'] = np.where(df['high'] == 0, df['close'], df['high'])
+    df['low'] = np.where(df['low'] == 0, df['close'], df['low'])
+    
+    df['open'].replace(to_replace=0, method='bfill', inplace=True) ## front-fill & back-fill to make sure the first row is non-zero
+    df['high'] = np.where(df['high'] == 0, df['open'], df['high'])
+    df['low'] = np.where(df['low'] == 0, df['open'], df['low'])
+    df['close'] = np.where(df['close'] == 0, df['open'], df['close'])
+    
+    return df['open'].values, df['high'].values, df['low'].values, df['close'].values
+
 class HistoricalData(object):
     def __init__(self):
         print("Make sure to preprocess everything before running this code...")
@@ -238,7 +253,7 @@ class HistoricalData(object):
 
                 end = time.time()
                 #print(f"Time elapsed for calculating volume/lob (with mean/std...) of 1 day: {end - start}\n")
-                print(f"Time elapsed for 1 day: {end - start} seconds\n")
+                print(f"Time elapsed for 1 day: {end - start:.3f} seconds\n")
 
         print(f'\n\nCreated {ohlcvt_atr_count} _OHLCVT_ATR_premkt npy files.\n\n')
 
@@ -348,12 +363,20 @@ class HistoricalData(object):
                 interval_bid_execute_volume = ohlc_data[:,ohlcvt_index[4]]
                 interval_ask_execute_volume = ohlc_data[:,ohlcvt_index[5]]
 
-                
-
                 interval_best_ask_price = ffill_zeros(interval_best_ask_price)
                 interval_best_bid_price = ffill_zeros(interval_best_bid_price)
                 
                 interval_lob_midprice = (interval_best_ask_price + interval_best_bid_price) / 2
+                
+                assert (interval_open != 0).all()
+                assert (interval_high != 0).all()
+                assert (interval_low != 0).all()
+                assert (interval_close != 0).all()
+                
+                assert (interval_best_ask_price != 0).all()
+                assert (interval_best_bid_price != 0).all()
+                
+                assert (interval_lob_midprice != 0).all()
 
                 ### ATR Calculation
                 high_low = np.concatenate([np.array([0]), interval_high[1:] - interval_low[1:]])
@@ -393,7 +416,7 @@ class HistoricalData(object):
 
                 end = time.time()
                 #print(f"Time elapsed for calculating volume/lob (with mean/std...) of 1 day: {end - start}\n")
-                print(f"Time elapsed for 1 day: {end - start} seconds\n")
+                print(f"Time elapsed for 1 day: {end - start:.3f} seconds\n")
 
         print(f'\n\nCreated {ohlcvt_atr_count} OHLCVT_ATR npy files.\n\n')
 
@@ -568,11 +591,9 @@ class HistoricalData(object):
 
                 end = time.time()
                 #print(f"Time elapsed for calculating volume/lob (with mean/std...) of 1 day: {end - start}\n")
-                print(f"Time elapsed for 1 day: {end - start} seconds\n")
+                print(f"Time elapsed for 1 day: {end - start:.3f} seconds\n")
 
         print(f'\n\nCreated {ohlcvt_atr_count} OHLCVT_ATR npy files.\n\n')
-
-
 
 class NasdaqData(HistoricalData):
     def __init__(self, start_date, end_date, sym):
@@ -585,7 +606,10 @@ class NasdaqData(HistoricalData):
         self.bidask_dir = '/media/seyeon04299/HardDisk/jupyter_server/ibkr_data/shared/'
         self.start_date_str = start_date
         self.end_date_str = end_date
-        self.securities = [sym]
+        if "_" in sym:
+            self.securities = sym.split("_")
+        else:
+            self.securities = [sym]
         # self.securities = self.get_securities()
         self.data_dirs = self.get_data_dirs()
 
@@ -646,7 +670,6 @@ class NasdaqData(HistoricalData):
                 iter_date = iter_date + timedelta(days=1)
         return ibkr_data_dirs
 
-
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description="")
@@ -659,5 +682,5 @@ if __name__ == '__main__':
     nasdaq_data = NasdaqData(args.start_date, args.end_date, args.sym)
     nasdaq_data.save_npy()
     # nasdaq_data.save_premkt_npy()
-    nasdaq_data.save_npy_bollinger()
+    # nasdaq_data.save_npy_bollinger()
     # nasdaq_data.save_premkt_npy()
